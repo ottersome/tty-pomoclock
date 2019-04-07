@@ -175,44 +175,73 @@ cleanup(void)
 void
 update_hour(void)
 {
-     int ihour;
-     char tmpstr[128];
+    if(!ttyclock.cntDwn_Timer.paused)
+        ttyclock.lt = time(NULL);
+    if(!ttyclock.option.pomodoro && !ttyclock.option.pomodoroMain){
+        int ihour;
+        char tmpstr[128];
 
-     ttyclock.lt = time(NULL);
-     ttyclock.tm = localtime(&(ttyclock.lt));
-     if(ttyclock.option.utc) {
-         ttyclock.tm = gmtime(&(ttyclock.lt));
-     }
+        ttyclock.tm = localtime(&(ttyclock.lt));
+        if(ttyclock.option.utc) {
+            ttyclock.tm = gmtime(&(ttyclock.lt));
+        }
 
-     ihour = ttyclock.tm->tm_hour;
+        ihour = ttyclock.tm->tm_hour;
 
-     if(ttyclock.option.twelve)
-          ttyclock.meridiem = ((ihour > 12) ? PMSIGN : AMSIGN);
-     else
-          ttyclock.meridiem = "\0";
+        if(ttyclock.option.twelve)
+            ttyclock.meridiem = ((ihour > 12) ? PMSIGN : AMSIGN);
+        else
+            ttyclock.meridiem = "\0";
 
-     /* Manage hour for twelve mode */
-     ihour = ((ttyclock.option.twelve && ihour > 12)  ? (ihour - 12) : ihour);
-     ihour = ((ttyclock.option.twelve && !ihour) ? 12 : ihour);
+        /* Manage hour for twelve mode */
+        ihour = ((ttyclock.option.twelve && ihour > 12)  ? (ihour - 12) : ihour);
+        ihour = ((ttyclock.option.twelve && !ihour) ? 12 : ihour);
 
-     /* Set hour */
-     ttyclock.date.hour[0] = ihour / 10;
-     ttyclock.date.hour[1] = ihour % 10;
+        /* Set hour */
+        ttyclock.date.hour[0] = ihour / 10;
+        ttyclock.date.hour[1] = ihour % 10;
 
-     /* Set minutes */
-     ttyclock.date.minute[0] = ttyclock.tm->tm_min / 10;
-     ttyclock.date.minute[1] = ttyclock.tm->tm_min % 10;
+        /* Set minutes */
+        ttyclock.date.minute[0] = ttyclock.tm->tm_min / 10;
+        ttyclock.date.minute[1] = ttyclock.tm->tm_min % 10;
 
-     /* Set date string */
-     strftime(tmpstr,
-              sizeof(tmpstr),
-              ttyclock.option.format,
-              ttyclock.tm);
-     sprintf(ttyclock.date.datestr, "%s%s", tmpstr, ttyclock.meridiem);
+        /* Set date string */
+        strftime(tmpstr,
+                sizeof(tmpstr),
+                ttyclock.option.format,
+                ttyclock.tm);
+        sprintf(ttyclock.date.datestr, "%s%s", tmpstr, ttyclock.meridiem);
 
-     /* Set seconds */
-     ttyclock.date.second[0] = ttyclock.tm->tm_sec / 10;
-     ttyclock.date.second[1] = ttyclock.tm->tm_sec % 10;
+        /* Set seconds */
+        ttyclock.date.second[0] = ttyclock.tm->tm_sec / 10;
+        ttyclock.date.second[1] = ttyclock.tm->tm_sec % 10;
+
+        /* Update Pomodoro Stuff */
+    }else if(!ttyclock.cntDwn_Timer.paused){
+        double curTime = time(NULL);
+        ttyclock.elapsed_time += difftime(curTime,ttyclock.prev_Upd_Time);
+        //ttyclock.prev_Upd_Time = (clock()/CLOCKS_PER_SEC);
+        ttyclock.prev_Upd_Time = curTime;
+
+        unsigned long elapsedSeconds = ttyclock.elapsed_time;
+        unsigned long elapsedHours = elapsedSeconds / 3600;
+        elapsedSeconds %= 3600;
+
+        ttyclock.date.hour[0] = elapsedHours / 10;
+        ttyclock.date.hour[1] = elapsedHours % 10;
+
+        unsigned long elapsedMinutes = elapsedSeconds / 60;
+        elapsedSeconds %= 60;
+
+        ttyclock.date.minute[0] = elapsedMinutes / 10;
+        ttyclock.date.minute[1] = elapsedMinutes % 10;
+
+        ttyclock.date.second[0] = elapsedSeconds / 10;
+        ttyclock.date.second[1] = elapsedSeconds % 10;
+
+
+    }
+
 
      return;
 }
@@ -443,8 +472,13 @@ key_event(void)
      }
 
 
+
      switch(c = wgetch(stdscr))
      {
+         case ' ':
+             ttyclock.cntDwn_Timer.paused = !ttyclock.cntDwn_Timer.paused; 
+             ttyclock.prev_Upd_Time = time(NULL);
+             break;
      case KEY_UP:
      case 'k':
      case 'K':
@@ -551,10 +585,15 @@ main(int argc, char **argv)
      ttyclock.option.delay = 1; /* 1FPS */
      ttyclock.option.nsdelay = 0; /* -0FPS */
      ttyclock.option.blink = False;
+     
+     /* Pomodoro */
+     ttyclock.option.pomodoroMain = false;
+     ttyclock.option.pomodoro = false;
+     ttyclock.elapsed_time = 0;
 
      atexit(cleanup);
 
-     while ((c = getopt(argc, argv, "iuvsScbtrhBxnDC:f:d:T:a:")) != -1)
+     while ((c = getopt(argc, argv, "iuvsScbtrhBxnDCpP:f:d:T:a:")) != -1)
      {
           switch(c)
           {
@@ -653,6 +692,14 @@ main(int argc, char **argv)
           case 'n':
                ttyclock.option.noquit = True;
                break;
+          case 'p':
+               ttyclock.option.pomodoro = True;
+               time(&ttyclock.prev_Upd_Time);
+               break;
+          case 'P':
+               ttyclock.option.pomodoroMain = True;
+               time(&ttyclock.prev_Upd_Time);
+               break;
           }
      }
 
@@ -660,10 +707,10 @@ main(int argc, char **argv)
      attron(A_BLINK);
      while(ttyclock.running)
      {
+          key_event();
           clock_rebound();
           update_hour();
           draw_clock();
-          key_event();
      }
 
      endwin();

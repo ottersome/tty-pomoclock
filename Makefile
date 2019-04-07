@@ -4,7 +4,7 @@
 
 SRC = ttyclock.c
 CC ?= gcc
-BIN ?= tty-clock
+BIN ?= tty-pomoclock
 PREFIX ?= /usr/local
 INSTALLPATH ?= ${DESTDIR}${PREFIX}/bin
 MANPATH ?= ${DESTDIR}${PREFIX}/share/man/man1
@@ -26,8 +26,7 @@ else
 	LDFLAGS += $$(pkg-config --libs ncurses)
 endif
 
-tty-clock : ${SRC}
-
+tty-pomoclock : ${SRC}
 	@echo "building ${SRC}"
 	${CC} ${CFLAGS} ${SRC} -o ${BIN} ${LDFLAGS}
 

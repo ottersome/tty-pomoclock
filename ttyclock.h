@@ -47,6 +47,7 @@
 #include <getopt.h>
 
 /* Macro */
+#define DEF_POMOTIME 1500//seconds
 #define NORMFRAMEW 35
 #define SECFRAMEW  54
 #define DATEWINH   3
@@ -84,6 +85,10 @@ typedef struct
           long delay;
           Bool blink;
           long nsdelay;
+
+          Bool pomodoro;
+          Bool pomodoroMain;
+          int pomoTimer;
      } option;
 
      /* Clock geometry */
@@ -111,6 +116,19 @@ typedef struct
      char *meridiem;
      WINDOW *framewin;
      WINDOW *datewin;
+
+    /* Pomodoro Stuff */
+    struct{
+        bool countDown;//false = count Up
+        bool paused;
+
+
+        unsigned int second[2];
+        unsigned int minute[2];
+        unsigned int hour[2];//Might not actually be used.
+    } cntDwn_Timer;
+    time_t prev_Upd_Time;
+    double elapsed_time;//in seconds
 
 } ttyclock_t;
 
@@ -143,7 +161,8 @@ const Bool number[][15] =
      {1,1,1,1,0,1,1,1,1,1,0,1,1,1,1}, /* 8 */
      {1,1,1,1,0,1,1,1,1,0,0,1,1,1,1}, /* 9 */
 };
-
+const Bool tomato[15] = {0,0,1,0,1,0,1,1,1,1,1,1,1,1,1};//TomatoShape
 #endif /* TTYCLOCK_H_INCLUDED */
 
+//
 // vim: expandtab tabstop=4 softtabstop=4 shiftwidth=4
